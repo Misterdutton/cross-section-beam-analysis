@@ -16,6 +16,8 @@ test('import adds a copy even when IDs collide, preserving existing project data
 test('newer schemas and incompatible app versions are rejected before importing',()=>{
  for(const patch of [{format:'other'},{schemaVersion:2},{appVersion:'9.0.0'},{beams:{}}])assert.throws(()=>jobs.validate({...library(beam()),...patch},schema));
  assert.equal(jobs.validate({...library(beam()),appVersion:'0.6.0'},schema).appVersion,jobs.APP_VERSION);
+ assert.equal(jobs.validate({...library(beam()),appVersion:'0.7.0'},schema).appVersion,jobs.APP_VERSION);
+ assert.throws(()=>jobs.validate({...library(beam()),appVersion:'0.7.999'},schema));
 });
 test('untrusted backups cannot inject unknown inputs, result status, nonfinite numbers or arbitrary select values',()=>{
  for(const patch of [{b:'Infinity'},{b:'<script>1</script>'},{b:' '},{db:'999'},{memberType:'../../private'},{extra:'1'},{__proto__:null,constructor:'1'}]){const b=beam();b.values={...b.values,...patch};assert.throws(()=>jobs.validate(library(b),schema));}

@@ -1,6 +1,6 @@
 (function(root,factory){const api=factory();if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.BeamJobs=api;})(globalThis,()=>{
  'use strict';
- const APP_VERSION='0.7.0',SCHEMA_VERSION=1,MAX_BEAMS=200,MAX_FILE_BYTES=2*1024*1024;
+ const APP_VERSION='0.7.1',SCHEMA_VERSION=1,MAX_BEAMS=200,MAX_FILE_BYTES=2*1024*1024;
  const META_KEYS=['project','floor','beam','preparedBy','checkedBy','date'];
  function object(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
  function fail(message){throw Error(message);}
@@ -23,7 +23,7 @@
  function timestamp(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T/.test(value)||!Number.isFinite(Date.parse(value)))fail('วันเวลาบันทึกไม่ถูกต้อง');return value;}
  function validate(raw,schema){
   if(!object(raw)||raw.format!=='sdm-beam-jobs'||raw.schemaVersion!==SCHEMA_VERSION)fail('ไม่ใช่ไฟล์งาน SDM Beam ที่รองรับ');
-  if(!['0.6.0',APP_VERSION].includes(raw.appVersion))fail('ไฟล์มาจากแอปคนละรุ่น กรุณาใช้รุ่นที่รองรับไฟล์นี้');
+  if(!(raw.appVersion==='0.6.0'||(typeof raw.appVersion==='string'&&/^0\.7\.\d+$/.test(raw.appVersion)&&Number(raw.appVersion.split('.')[2])<=Number(APP_VERSION.split('.')[2]))))fail('ไฟล์มาจากแอปคนละรุ่น กรุณาใช้รุ่นที่รองรับไฟล์นี้');
   if(!Array.isArray(raw.beams)||raw.beams.length>MAX_BEAMS)fail('รองรับไม่เกิน '+MAX_BEAMS+' คานต่อชุด');
   const ids=new Set();
   const beams=raw.beams.map(b=>{

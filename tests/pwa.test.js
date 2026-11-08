@@ -7,7 +7,7 @@ function worker(base='https://example.test/cross-section-beam-analysis/',options
   state.calls++;if(!state.online)throw Error('Network unavailable');const url=typeof request==='string'?request:request.url;
   const name=new URL(url).pathname.slice(new URL(base).pathname.length)||'index.html';
   if(name===options.failAsset)return new Response('missing',{status:404});
-  let body=fs.readFileSync(path.join(dist,name));if(options.staleShell&&name==='index.html')body=Buffer.from(body.toString().replace('name="sdm-app-version" content="0.7.0"','name="sdm-app-version" content="0.5.0"'));
+  let body=fs.readFileSync(path.join(dist,name));if(options.staleShell&&name==='index.html')body=Buffer.from(body.toString().replace('name="sdm-app-version" content="0.7.1"','name="sdm-app-version" content="0.5.0"'));
   if(options.drainGatedNetwork){if(inFlight>=3)await new Promise(resolve=>networkQueue.push(resolve));inFlight++;state.maxInFlight=Math.max(state.maxInFlight,inFlight);}
   const response=new Response(body,{status:200});
   if(options.drainGatedNetwork){let released=false;const clone=response.clone.bind(response);response.clone=()=>{const copy=clone(),read=copy.arrayBuffer.bind(copy);copy.arrayBuffer=async()=>{const bytes=await read();if(!released){released=true;inFlight--;networkQueue.shift()?.();}return bytes;};return copy;};}
@@ -20,7 +20,7 @@ function worker(base='https://example.test/cross-section-beam-analysis/',options
  return {handlers,stores,state,dispatch,get,status,base};
 }
 test('full shell installs under a GitHub project subpath and serves offline without network requests',async()=>{
- const w=worker();await w.dispatch('install');await w.dispatch('activate');const status=await w.status();assert(status.ready);assert.equal(status.version,'0.7.0');assert.equal(w.state.skips,0);
+ const w=worker();await w.dispatch('install');await w.dispatch('activate');const status=await w.status();assert(status.ready);assert.equal(status.version,'0.7.1');assert.equal(w.state.skips,0);
  const before=w.state.calls;w.state.online=false;
  for(const file of ['', 'engine.js','mobile.js','icon-192.png','manifest.webmanifest']){const response=await w.get(w.base+file);assert.equal(response.status,200);}
  assert((await (await w.get(w.base)).text()).includes('id="form"'));assert.equal(w.state.calls,before);

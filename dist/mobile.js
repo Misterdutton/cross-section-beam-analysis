@@ -1,4 +1,4 @@
-const MOBILE_VERSION='0.7.0';
+const MOBILE_VERSION='0.7.1';
 const MOBILE_DRAFT_KEY='sdm-beam-saved-draft-v1';
 const MOBILE_UPDATE_KEY='sdm-beam-before-update';
 let installPrompt=null,mobileRegistration=null,updateRequested=false,offlineReady=false,offlineWatchdog=null;
@@ -19,7 +19,7 @@ function checkOfflineReady(worker){
  };
  worker.postMessage({type:'SHELL_STATUS'},[channel.port2]);
 }
-function offerMobileUpdate(){if(mobileRegistration?.waiting){document.getElementById('updateApp').hidden=false;mobileStatus('mobileNotice','มีแอปรุ่นใหม่ กดอัปเดตเมื่อพร้อม ข้อมูลที่กำลังกรอกจะเก็บไว้ในเครื่องชั่วคราว');}}
+async function offerMobileUpdate(){try{mobileRegistration=await navigator.serviceWorker.getRegistration('./')||mobileRegistration;}catch{}if(mobileRegistration?.waiting){document.getElementById('updateApp').hidden=false;mobileStatus('mobileNotice','มีแอปรุ่นใหม่ กดอัปเดตเมื่อพร้อม ข้อมูลที่กำลังกรอกจะเก็บไว้ในเครื่องชั่วคราว');}}
 function initMobile(){
  const network=()=>mobileStatus('networkStatus',navigator.onLine?'อุปกรณ์ออนไลน์':'อุปกรณ์ออฟไลน์');network();window.addEventListener('online',network);window.addEventListener('offline',network);
  const instructions=document.getElementById('installHelp'),drawing=document.getElementById('drawingDialog');
@@ -35,10 +35,12 @@ function initMobile(){
  document.getElementById('closeDrawing').onclick=()=>{drawing.close();document.getElementById('drawingFull').style.width='100%';};
  document.getElementById('fieldCalculate').onclick=()=>{document.querySelector('form').requestSubmit();document.getElementById('guidanceSection').scrollIntoView({behavior:'smooth'});};
  try{const draft=sessionStorage.getItem(MOBILE_UPDATE_KEY);if(draft){sessionStorage.removeItem(MOBILE_UPDATE_KEY);const parsed=JSON.parse(draft);restoreMobileInputs(parsed.values||parsed);if(parsed.metadata)window.sdmRestoredWorkspace=parsed;}}catch{}
- document.getElementById('updateApp').onclick=()=>{
-  if(!mobileRegistration?.waiting){mobileStatus('mobileNotice','ยังไม่มีรุ่นใหม่รออัปเดต');return;}
+ document.getElementById('updateApp').onclick=async()=>{
+  try{mobileRegistration=await navigator.serviceWorker.getRegistration('./')||mobileRegistration;}catch{mobileStatus('mobileNotice','ตรวจรุ่นใหม่ไม่ได้ กรุณาบันทึกงานแล้วลองใหม่');return;}
+  const waiting=mobileRegistration?.waiting;
+  if(!waiting){mobileStatus('mobileNotice','ยังไม่มีรุ่นใหม่รออัปเดต หากเพิ่งเผยแพร่รุ่นใหม่ ให้บันทึกงาน ปิดทุกแท็บแอป แล้วเปิดใหม่');return;}
   try{sessionStorage.setItem(MOBILE_UPDATE_KEY,JSON.stringify(window.workspaceSnapshot?window.workspaceSnapshot():mobileInputs()));}catch{mobileStatus('mobileNotice','เก็บข้อมูลก่อนอัปเดตไม่ได้ กรุณาบันทึกข้อมูลก่อนแล้วเปิดแอปใหม่');return;}
-  updateRequested=true;mobileRegistration.waiting.postMessage({type:'SKIP_WAITING'});
+  updateRequested=true;waiting.postMessage({type:'SKIP_WAITING'});
  };
  if(!('serviceWorker' in navigator)||!window.isSecureContext){mobileStatus('offlineStatus','เบราว์เซอร์นี้ยังไม่รองรับโหมดออฟไลน์ ใช้ลิงก์ออนไลน์แทน');return;}
  offlineWatchdog=setTimeout(()=>{if(!offlineReady)mobileStatus('offlineStatus','ยังไม่พร้อมออฟไลน์ กรุณาเปิดด้วย Chrome หรือ Safari บนมือถือแล้วลองใหม่');},15000);

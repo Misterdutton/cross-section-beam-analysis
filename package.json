@@ -1,1 +1,1 @@
-{"name":"cross-section-beam-analysis","private":true,"version":"0.7.0","description":"Mobile and offline reinforced-concrete beam calculator prototype","scripts":{"test":"node scripts/check.cjs","start":"node scripts/serve.cjs"},"engines":{"node":">=20"}}
+{"name":"cross-section-beam-analysis","private":true,"version":"0.7.1","description":"Mobile and offline reinforced-concrete beam calculator prototype","scripts":{"test":"node scripts/check.cjs","start":"node scripts/serve.cjs"},"engines":{"node":">=20"}}

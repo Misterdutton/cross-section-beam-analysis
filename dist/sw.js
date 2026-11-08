@@ -1,5 +1,5 @@
 /* Bump VERSION whenever any shell asset changes. Each release is cached as one unit. */
-const VERSION='0.7.0';
+const VERSION='0.7.1';
 const CACHE_PREFIX='sdm-beam-shell-';
 const CACHE_NAME=CACHE_PREFIX+VERSION;
 const SHELL_FILES=['./','index.html','style.css','engine.js','layout.js','eit-detailing.js','eit-ui.js','guidance.js','guidance-ui.js','jobs.js','workspace.js','app.js','mobile.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','icon-maskable.png','apple-touch-icon.png'];
@@ -38,6 +38,6 @@ self.addEventListener('fetch',event=>{
  event.respondWith((async()=>{const cache=await caches.open(CACHE_NAME);return await cache.match(url)||fetch(event.request);})());
 });
 self.addEventListener('message',event=>{
- if(event.data?.type==='SKIP_WAITING'){event.waitUntil(self.skipWaiting());return;}
+ if(event.data?.type==='SKIP_WAITING'){self.skipWaiting();return;}
  if(event.data?.type==='SHELL_STATUS')event.waitUntil((async()=>{event.ports?.[0]?.postMessage({version:VERSION,ready:await shellComplete()});})());
 });
