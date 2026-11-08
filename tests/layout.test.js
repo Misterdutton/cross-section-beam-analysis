@@ -1,0 +1,8 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const {beamLayout}=require('../dist/layout');const {design}=require('../dist/engine');
+const p={b:300,h:500,cover:40,db:20,ds:9,fc:28,fy:400,fyt:235,Mu:120,Vu:100,agg:20};
+const q={L:5000,ml:150,mr:150,topBase:2,bottomBase:2,leftRatio:.25,rightRatio:.25,bottomRatio:.5};
+test('sections include top, bottom and additional bars at actual station',()=>{const m=beamLayout(p,q);assert.deepEqual(m.stations.map(z=>[z.top,z.bottom]),[[4,2],[2,3],[4,2]]);assert(m.stations.every(z=>z.result.ok));assert.equal(m.bands.find(z=>z.id==='BM').start*q.L,1250);assert.equal(m.bands.find(z=>z.id==='BM').end*q.L,3750);});
+test('three-quarter extra length is centered and has the requested length',()=>{const m=beamLayout(p,{...q,bottomRatio:.75}),z=m.bands.find(z=>z.id==='BM');assert.equal(z.start,.125);assert.equal(z.end,.875);assert.equal((z.end-z.start)*q.L,3750);});
+test('overlapping top extras count together and detect fit failure',()=>{const m=beamLayout(p,{...q,leftRatio:.75,rightRatio:.75});assert.equal(m.at(.5).top,6);assert.equal(m.maxTop,6);assert(!m.fitTop);assert.equal(m.stations[1].top,6);});
+test('selected continuous quantity is evaluated, rather than automatically replaced',()=>{const m=beamLayout(p,{...q,topBase:6});assert.equal(m.stations[0].result.n,6);assert(!m.fitTop);assert.equal(m.bands.find(z=>z.id==='TL').n,0);assert.equal(design(p,2).checks.find(x=>x[0].startsWith('กำลังดัด'))[1],false);});
+test('invalid layout values are rejected',()=>{for(const bad of [{L:0},{L:Infinity},{leftRatio:0},{rightRatio:1.1},{topBase:2.5},{bottomBase:1},{ml:-1}])assert.throws(()=>beamLayout(p,{...q,...bad}));assert.throws(()=>design(p,1));});
