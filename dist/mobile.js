@@ -1,4 +1,4 @@
-const MOBILE_VERSION='0.6.0';
+const MOBILE_VERSION='0.7.0';
 const MOBILE_DRAFT_KEY='sdm-beam-saved-draft-v1';
 const MOBILE_UPDATE_KEY='sdm-beam-before-update';
 let installPrompt=null,mobileRegistration=null,updateRequested=false,offlineReady=false,offlineWatchdog=null;
@@ -34,12 +34,10 @@ function initMobile(){
  document.getElementById('drawingZoom').oninput=event=>{document.getElementById('drawingFull').style.width=event.target.value+'%';};
  document.getElementById('closeDrawing').onclick=()=>{drawing.close();document.getElementById('drawingFull').style.width='100%';};
  document.getElementById('fieldCalculate').onclick=()=>{document.querySelector('form').requestSubmit();document.getElementById('guidanceSection').scrollIntoView({behavior:'smooth'});};
- document.getElementById('saveMobileDraft').onclick=()=>{try{localStorage.setItem(MOBILE_DRAFT_KEY,JSON.stringify({version:MOBILE_VERSION,savedAt:new Date().toISOString(),values:mobileInputs()}));mobileStatus('mobileNotice','บันทึกข้อมูลในเบราว์เซอร์เครื่องนี้แล้ว ไม่ได้ส่งค่าคานไป GitHub');}catch{mobileStatus('mobileNotice','บันทึกในเครื่องไม่ได้ กรุณาตรวจพื้นที่หรือการตั้งค่าเบราว์เซอร์');}};
- document.getElementById('loadMobileDraft').onclick=()=>{try{const draft=JSON.parse(localStorage.getItem(MOBILE_DRAFT_KEY)||'null');if(!draft?.values){mobileStatus('mobileNotice','ยังไม่มีข้อมูลที่บันทึกในเบราว์เซอร์เครื่องนี้');return;}restoreMobileInputs(draft.values);}catch{mobileStatus('mobileNotice','อ่านข้อมูลที่บันทึกไว้ไม่ได้ กรุณากรอกใหม่');}};
- try{const draft=sessionStorage.getItem(MOBILE_UPDATE_KEY);if(draft){sessionStorage.removeItem(MOBILE_UPDATE_KEY);restoreMobileInputs(JSON.parse(draft));}}catch{}
+ try{const draft=sessionStorage.getItem(MOBILE_UPDATE_KEY);if(draft){sessionStorage.removeItem(MOBILE_UPDATE_KEY);const parsed=JSON.parse(draft);restoreMobileInputs(parsed.values||parsed);if(parsed.metadata)window.sdmRestoredWorkspace=parsed;}}catch{}
  document.getElementById('updateApp').onclick=()=>{
   if(!mobileRegistration?.waiting){mobileStatus('mobileNotice','ยังไม่มีรุ่นใหม่รออัปเดต');return;}
-  try{sessionStorage.setItem(MOBILE_UPDATE_KEY,JSON.stringify(mobileInputs()));}catch{mobileStatus('mobileNotice','เก็บข้อมูลก่อนอัปเดตไม่ได้ กรุณาบันทึกข้อมูลก่อนแล้วเปิดแอปใหม่');return;}
+  try{sessionStorage.setItem(MOBILE_UPDATE_KEY,JSON.stringify(window.workspaceSnapshot?window.workspaceSnapshot():mobileInputs()));}catch{mobileStatus('mobileNotice','เก็บข้อมูลก่อนอัปเดตไม่ได้ กรุณาบันทึกข้อมูลก่อนแล้วเปิดแอปใหม่');return;}
   updateRequested=true;mobileRegistration.waiting.postMessage({type:'SKIP_WAITING'});
  };
  if(!('serviceWorker' in navigator)||!window.isSecureContext){mobileStatus('offlineStatus','เบราว์เซอร์นี้ยังไม่รองรับโหมดออฟไลน์ ใช้ลิงก์ออนไลน์แทน');return;}

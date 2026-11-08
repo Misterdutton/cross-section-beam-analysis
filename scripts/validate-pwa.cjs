@@ -1,7 +1,10 @@
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.resolve(__dirname,'..'),dist=path.join(root,'dist');
 const html=fs.readFileSync(path.join(dist,'index.html'),'utf8'),sw=fs.readFileSync(path.join(dist,'sw.js'),'utf8'),client=fs.readFileSync(path.join(dist,'mobile.js'),'utf8');
+const packageVersion=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
+const jobs=fs.readFileSync(path.join(dist,'jobs.js'),'utf8');
 const version=sw.match(/const VERSION='([^']+)'/)[1];
+if(version!==packageVersion||!jobs.includes("APP_VERSION='"+version+"'"))throw Error('Package and job format versions do not match');
 if(!html.includes('name="sdm-app-version" content="'+version+'"')||!client.includes("MOBILE_VERSION='"+version+"'"))throw Error('PWA versions do not match');
 const list=vm.runInNewContext(sw.match(/const SHELL_FILES=(\[[^;]+\]);/)[1]);
 for(const file of list){const name=file==='./'?'index.html':file;if(!fs.existsSync(path.join(dist,name)))throw Error('Missing offline asset '+name);}

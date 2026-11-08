@@ -1,14 +1,17 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),vm=require('vm');
 const dist=path.resolve(__dirname,'../dist'),source=fs.readFileSync(path.join(dist,'sw.js'),'utf8');
 function worker(base='https://example.test/cross-section-beam-analysis/',options={}){
- const handlers={},stores=new Map(),state={online:true,calls:0,skips:0,claims:0};
+ const handlers={},stores=new Map(),state={online:true,calls:0,skips:0,claims:0,maxInFlight:0};let inFlight=0;const networkQueue=[];
  const open=async name=>{if(!stores.has(name))stores.set(name,new Map());const store=stores.get(name);return {put:async(key,response)=>store.set(typeof key==='string'?key:key.url,response.clone()),match:async key=>store.get(typeof key==='string'?key:key.url)?.clone()};};
  const context={URL,Request,Response,Promise,console,caches:{open,keys:async()=>[...stores.keys()],delete:async name=>stores.delete(name)},self:{location:{href:base+'sw.js'},clients:{claim:async()=>state.claims++},skipWaiting:()=>{state.skips++;},addEventListener:(name,handler)=>handlers[name]=handler},fetch:async request=>{
   state.calls++;if(!state.online)throw Error('Network unavailable');const url=typeof request==='string'?request:request.url;
   const name=new URL(url).pathname.slice(new URL(base).pathname.length)||'index.html';
   if(name===options.failAsset)return new Response('missing',{status:404});
-  let body=fs.readFileSync(path.join(dist,name));if(options.staleShell&&name==='index.html')body=Buffer.from(body.toString().replace('name="sdm-app-version" content="0.6.0"','name="sdm-app-version" content="0.5.0"'));
-  return new Response(body,{status:200});
+  let body=fs.readFileSync(path.join(dist,name));if(options.staleShell&&name==='index.html')body=Buffer.from(body.toString().replace('name="sdm-app-version" content="0.7.0"','name="sdm-app-version" content="0.5.0"'));
+  if(options.drainGatedNetwork){if(inFlight>=3)await new Promise(resolve=>networkQueue.push(resolve));inFlight++;state.maxInFlight=Math.max(state.maxInFlight,inFlight);}
+  const response=new Response(body,{status:200});
+  if(options.drainGatedNetwork){let released=false;const clone=response.clone.bind(response);response.clone=()=>{const copy=clone(),read=copy.arrayBuffer.bind(copy);copy.arrayBuffer=async()=>{const bytes=await read();if(!released){released=true;inFlight--;networkQueue.shift()?.();}return bytes;};return copy;};}
+  return response;
  }};
  vm.runInNewContext(source,context);
  const dispatch=async(name,event={})=>{const pending=[];handlers[name]({...event,waitUntil:p=>pending.push(p)});await Promise.all(pending);};
@@ -17,13 +20,18 @@ function worker(base='https://example.test/cross-section-beam-analysis/',options
  return {handlers,stores,state,dispatch,get,status,base};
 }
 test('full shell installs under a GitHub project subpath and serves offline without network requests',async()=>{
- const w=worker();await w.dispatch('install');await w.dispatch('activate');const status=await w.status();assert(status.ready);assert.equal(status.version,'0.6.0');assert.equal(w.state.skips,0);
+ const w=worker();await w.dispatch('install');await w.dispatch('activate');const status=await w.status();assert(status.ready);assert.equal(status.version,'0.7.0');assert.equal(w.state.skips,0);
  const before=w.state.calls;w.state.online=false;
  for(const file of ['', 'engine.js','mobile.js','icon-192.png','manifest.webmanifest']){const response=await w.get(w.base+file);assert.equal(response.status,200);}
  assert((await (await w.get(w.base)).text()).includes('id="form"'));assert.equal(w.state.calls,before);
 });
 test('a failed asset never leaves a newly installed partial shell',async()=>{
  const w=worker(undefined,{failAsset:'guidance.js'});await assert.rejects(()=>w.dispatch('install'));assert.equal(w.stores.size,0);
+});
+test('connection-limited hosts finish installation by draining bodies before queuing the full shell',async()=>{
+ const w=worker(undefined,{drainGatedNetwork:true});let timeout;
+ try{await Promise.race([w.dispatch('install'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Asset bodies were not consumed; queued requests stalled')),3000);})]);}finally{clearTimeout(timeout);}
+ assert((await w.status()).ready);assert.equal(w.state.maxInFlight,3);
 });
 test('old or sign-in shell is rejected before offline availability is announced',async()=>{
  const w=worker(undefined,{staleShell:true});await assert.rejects(()=>w.dispatch('install'));assert.equal((await w.status()).ready,false);
